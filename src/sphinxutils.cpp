@@ -355,6 +355,8 @@ static KeyDesc_t g_dKeysIndex[] =
 	{ "min_word_len",			0, NULL },
 	{ "charset_type",			0, NULL },
 	{ "charset_table",			0, NULL },
+	{ "pytoken_path",			0, NULL }, //python tokenizer path
+	{ "pytoken_debug",		   0, NULL }, //python tokenizer whether debug
 	{ "ignore_chars",			0, NULL },
 	{ "min_prefix_len",			0, NULL },
 	{ "min_infix_len",			0, NULL },
@@ -495,10 +497,10 @@ static KeyDesc_t g_dKeysSearchd[] =
 // -coreseek -pysource
 static KeyDesc_t g_dKeysPython[] =
 {
-    { "path",	KEY_LIST, NULL },
-    { "python_home",	0, NULL },
-    { "__debug_object_class",	0, NULL },
-    { NULL,						0, NULL }
+	{ "path",	KEY_LIST, NULL },
+	{ "python_home",	0, NULL },
+	{ "__debug_object_class",	0, NULL },
+	{ NULL,						0, NULL }
 };
 
 //////////////////////////////////////////////////////////////////////////
@@ -515,7 +517,7 @@ bool CSphConfigParser::IsPlainSection ( const char * sKey )
 	if ( !strcasecmp ( sKey, "indexer" ) )		return true;
 	if ( !strcasecmp ( sKey, "searchd" ) )		return true;
 	if ( !strcasecmp ( sKey, "search" ) )		return true;
-    if ( !strcasecmp ( sKey, "python" ) )		return true; //-coreseek -pysource
+	if ( !strcasecmp ( sKey, "python" ) )		return true; //-coreseek -pysource
 	return false;
 }
 
@@ -589,7 +591,7 @@ bool CSphConfigParser::ValidateKey ( const char * sKey )
 	else if ( m_sSectionType=="index" )		pDesc = g_dKeysIndex;
 	else if ( m_sSectionType=="indexer" )	pDesc = g_dKeysIndexer;
 	else if ( m_sSectionType=="searchd" )	pDesc = g_dKeysSearchd;
-    else if ( m_sSectionType=="python" )	pDesc = g_dKeysPython;      // -coreseek -pysource
+	else if ( m_sSectionType=="python" )	pDesc = g_dKeysPython;	  // -coreseek -pysource
 	if ( !pDesc )
 	{
 		snprintf ( m_sError, sizeof(m_sError), "unknown section type '%s'", m_sSectionType.cstr() );
@@ -912,7 +914,7 @@ bool CSphConfigParser::Parse ( const char * sFileName, const char * pBuffer )
 				continue;
 			}
 			if ( IsNamedSection(sToken) )	{ m_sSectionType = sToken; sToken[0] = '\0'; LOC_POP (); LOC_PUSH ( S_SECNAME ); LOC_BACK(); continue; }
-                                            LOC_ERROR2 ( "invalid section type '%s'", sToken );
+											LOC_ERROR2 ( "invalid section type '%s'", sToken );
 		}
 
 		// handle S_CHR state
@@ -1064,7 +1066,15 @@ bool sphConfTokenizer ( const CSphConfigSection & hIndex, CSphTokenizerSettings 
 				sphWarning ( "ngram_chars specified, but ngram_len=0; IGNORED" );
 		}
 
-	} else
+	}
+	#if USE_PYTHON
+	else if (hIndex("pytoken_path") && hIndex["charset_type"]=="python" )
+	{
+		tSettings.m_sDictPath = hIndex["pytoken_path"]; // 使用m_sDictPath 存储python的分词类名
+		tSettings.m_iType = TOKENIZER_PYTHON;
+	}
+	#endif
+	else
 	{
 		sError.SetSprintf ( "unknown charset type '%s'", hIndex["charset_type"].cstr() );
 		return false;
@@ -1963,7 +1973,7 @@ void sphBacktrace ( int iFD, bool bSafe )
 	if ( bOk )
 		sphSafeInfo ( iFD, "Backtrace looks OK. Now you have to do following steps:\n"
 							"  1. Run the command over the crashed binary (for example, 'searchd'):\n"
-							"     nm -n searchd > searchd.sym\n"
+							"	 nm -n searchd > searchd.sym\n"
 							"  2. Attach the binary, generated .sym and the text of backtrace (see above) to the bug report.\n"
 							"Also you can read the section about resolving backtraces in the documentation.");
 
