@@ -26,8 +26,13 @@ def __findPythonClass(sName):
     pos = sName.find('.')
     module_name = sName[:pos]
     cName = sName[pos+1:]
+    print module_name, cName
+    # import os
+    # print 'cwd: ', os.getcwd()
+    print '@@@@@@@@@@@@@@@@@@@@@@@@@@@@'
     try:
         m = importlib.import_module(module_name)
+        print m, dir(m)
         c = getattr(m, cName)
         return c
     except ImportError, e:
@@ -734,6 +739,7 @@ cdef public api CSphSource * createPythonDataSourceObject ( const char* sName, c
 
     sName = class_name
     clsType = __findPythonClass(sName)
+    print "hhhhh\n"
     if clsType:
         # Do error report @user code.
         try:
