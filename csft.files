@@ -57,3 +57,10 @@ src/yysphinxselect.c
 src/yysphinxselect.h
 src/pyiface.h
 src/pyiface.cpp
+
+src/pytoken.cpp
+src/pytoken.h
+//add three new file
+src/rs_result.h
+src/rs_result.hpp
+src/rosettastd.h

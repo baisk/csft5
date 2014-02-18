@@ -1835,6 +1835,10 @@ const DWORD * CSphMatch::GetAttrMVA ( const CSphAttrLocator & tLoc, const DWORD 
 inline int sphUTF8Decode ( BYTE * & pBuf ); // forward ref for GCC
 inline int sphUTF8Encode ( BYTE * pBuf, int iCode ); // forward ref for GCC
 
+#if USE_PYTHON
+ISphTokenizer *			sphCreatePythonTokenizer ( const char* python_path );
+#endif
+
 
 /// synonym list entry
 struct CSphSynonym
@@ -2050,6 +2054,12 @@ protected:
 	int					m_iNgramLen;
 	CSphString			m_sNgramCharsStr;
 };
+
+/////////////////////////////////// use python tokenizer
+#if USE_PYTHON
+#include "pytoken.h"
+#include "pytoken.cpp"
+#endif
 
 
 struct CSphMultiform
@@ -2383,6 +2393,24 @@ ISphTokenizer * sphCreateUTF8NgramTokenizer ()
 {
 	return new CSphTokenizer_UTF8Ngram<false> ();
 }
+
+#if USE_PYTHON
+ISphTokenizer *	sphCreatePythonTokenizer ( const char* python_path )
+{
+	//这里采用先调用c代码,然后然后c代码去和cython处理.
+	//表示不是query的时候的查询, 而是建立索引时.
+	CSphTokenizer_Python<false>* tokenizer = new CSphTokenizer_Python<false> ();
+	tokenizer->init(python_path); //绑定python的obj和分词法.
+	return (ISphTokenizer *)tokenizer;
+}
+
+//ISphTokenizer *	sphCreatePythonTokenizer ( const char* python_path )
+//{
+//	//这里把提前生成 python obj的任务放到这里, 先生成obj, 然后再生成CSphTokenizer_Python 对象
+//	return createPythonTokenizerObject(python_path);
+//}
+
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -2944,6 +2972,9 @@ void LoadTokenizerSettings ( CSphReader & tReader, CSphTokenizerSettings & tSett
 		tSettings.m_sBlendChars = tReader.GetString ();
 	if ( uVersion>=24 )
 		tSettings.m_sBlendMode = tReader.GetString();
+
+	// should be uVersion 30 +
+	tSettings.m_sPyTokenName = tReader.GetString();
 }
 
 
@@ -2971,6 +3002,9 @@ void SaveTokenizerSettings ( CSphWriter & tWriter, ISphTokenizer * pTokenizer, i
 	tWriter.PutString ( tSettings.m_sNgramChars.cstr () );
 	tWriter.PutString ( tSettings.m_sBlendChars.cstr () );
 	tWriter.PutString ( tSettings.m_sBlendMode.cstr () );
+
+	// should update uVersion
+	tWriter.PutString ( tSettings.m_sPyTokenName.cstr () );
 }
 
 
@@ -3311,6 +3345,10 @@ ISphTokenizer * ISphTokenizer::Create ( const CSphTokenizerSettings & tSettings,
 		case TOKENIZER_SBCS:	pTokenizer = sphCreateSBCSTokenizer (); break;
 		case TOKENIZER_UTF8:	pTokenizer = sphCreateUTF8Tokenizer (); break;
 		case TOKENIZER_NGRAM:	pTokenizer = sphCreateUTF8NgramTokenizer (); break;
+
+		case TOKENIZER_PYTHON:	pTokenizer = sphCreatePythonTokenizer (tSettings.m_sPyTokenName.cstr());
+			break; //new python tokenizer
+
 		default:
 			sError.SetSprintf ( "failed to create tokenizer (unknown charset type '%d')", tSettings.m_iType );
 			return NULL;

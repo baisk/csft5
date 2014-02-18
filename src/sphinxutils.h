@@ -144,6 +144,7 @@ enum
 	TOKENIZER_UTF8		= 2,
     TOKENIZER_NGRAM	= 3,
     TOKENIZER_PYTHON = 50,
+    TOKENIZER_UNKNOW = 100,
 };
 
 /// load config file

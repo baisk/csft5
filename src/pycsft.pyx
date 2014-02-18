@@ -2,7 +2,11 @@
 
 cimport pycsft
 cimport cpython.ref as cpy_ref
+from cpython.ref cimport Py_INCREF, Py_DECREF, Py_XDECREF
 import os
+
+import traceback
+import cython
 
 """
     定义
@@ -22,7 +26,9 @@ def __findPythonClass(sName):
         c = getattr(m, cName)
         return c
     except ImportError, e:
-        print e
+        print e, "python class init error"
+        #print 'can not find python class'
+        #exit(0)
         return None
 
 # Cython creator API
@@ -53,6 +59,15 @@ cdef public api cpy_ref.PyObject* __getPythonClassByName(const char* class_name)
 
 ## --- python tokenizer ---
 
+# cdef extern from "pytoken.h":
+#     cdef cppclass CSphTokenizer_Python:
+#         CSphTokenizer_Python ()
+#         ~CSphTokenizer_Python  ()
+#         bind(PyObject *obj)
+#         #SetBuffer ( BYTE * sBuffer, int iLength )
+#         #GetToken ()
+
+
 ## --- python cache ---
 
 ## --- python query ---
@@ -81,6 +96,19 @@ cdef public api cpy_ref.PyObject* __getPythonClassByName(const char* class_name)
 
 ## --- python tokenizer ---
 
+# cdef class PyTokenWrap(object):
+#     """
+#     提供一个 返回给pytoken的c风格的类, 方便指针转换
+#     """
+#     cdef object pytoken
+#     def __init__(self, pytoken):
+#         self.pytoken = pytoken
+
+cdef class PyTokenWrap:
+    cdef object pytoken
+    def __init__(self, pytoken):
+        self.pytoken = pytoken 
+
 ## --- python cache ---
 
 ## --- python query ---
@@ -96,6 +124,15 @@ cdef public api cpy_ref.PyObject* __getPythonClassByName(const char* class_name)
 
 ## --- python tokenizer ---
 
+cdef public api void pyTokenSetBuffer( cpy_ref.PyObject* pyobj ):
+    pytoken = <object>pyobj
+    pytoken.SetBuffer()
+    pytoken.GetToken()
+    
+cdef public api void pyTokenEcho( cpy_ref.PyObject* pyobj ):
+    print "in pyTokenEcho"
+    
+
 ## --- python cache ---
 
 ## --- python query ---
@@ -110,6 +147,44 @@ cdef public api cpy_ref.PyObject* __getPythonClassByName(const char* class_name)
 ## --- python source ---
 
 ## --- python tokenizer ---
+
+# cdef public api ISphTokenizer * createPythonTokenizerObject ( const char* python_path):
+#     cdef CSphTokenizer_Python[False]* pyToken  #here is a indexer token IS_QUERY is false
+
+#     clsType = __findPythonClass(python_path)
+#     print "i got python token\n"
+#     if clsType:
+#         try:
+#             obj = clsType()
+#         except Exception, ex:
+#             traceback.print_exc()
+#             return NULL
+
+#         pyToken = new CSphTokenizer_Python[False] ();
+#         pyToken.bind(obj)
+#         return <ISphTokenizer *> pyToken
+#     else:
+#         return NULL
+
+cdef public api cpy_ref.PyObject* createPythonTokenizerObject( const char* python_path):
+    cdef PyTokenWrap pywrap
+    clsType = __findPythonClass(python_path)
+    if clsType:
+        print "i got python token class\n"
+        try:
+            obj=clsType()
+            #print obj.test()
+            #pywrap = new PyTokenWrap(obj) #把obj放置在一个wrap的class中, 避免指针转换 这是一个指针
+            #pywrap = PyTokenWrap(obj)
+            #print pywrap.pytoken.test()
+            return <cpy_ref.PyObject*>obj  #convert the obj to PyObject*
+            #return cython.address(pywrap)
+        except Exception, e:
+            #traceback.print_exc()
+            print e
+            return NULL
+    return NULL
+
 
 ## --- python cache ---
 

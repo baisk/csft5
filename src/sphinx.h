@@ -473,8 +473,9 @@ struct CSphTokenizerSettings
 	CSphString			m_sNgramChars;
 	CSphString			m_sBlendChars;
 	CSphString			m_sBlendMode;
+	CSphString			m_sPyTokenName;  //this python path specify the python token class path
 
-						CSphTokenizerSettings ();
+								CSphTokenizerSettings ();
 };
 
 

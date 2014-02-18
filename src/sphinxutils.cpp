@@ -355,7 +355,7 @@ static KeyDesc_t g_dKeysIndex[] =
 	{ "min_word_len",			0, NULL },
 	{ "charset_type",			0, NULL },
 	{ "charset_table",			0, NULL },
-	{ "pytoken_path",			0, NULL }, //python tokenizer path
+	{ "token_name",			0, NULL }, //python tokenizer path
 	{ "pytoken_debug",		   0, NULL }, //python tokenizer whether debug
 	{ "ignore_chars",			0, NULL },
 	{ "min_prefix_len",			0, NULL },
@@ -1049,6 +1049,8 @@ bool CSphConfigParser::Parse ( const char * sFileName, const char * pBuffer )
 
 bool sphConfTokenizer ( const CSphConfigSection & hIndex, CSphTokenizerSettings & tSettings, CSphString & sError )
 {
+	printf("here in sphConfTokenizer");
+
 	tSettings.m_iNgramLen = Max ( hIndex.GetInt ( "ngram_len" ), 0 );
 
 	if ( !hIndex("charset_type") || hIndex["charset_type"]=="sbcs" )
@@ -1068,15 +1070,15 @@ bool sphConfTokenizer ( const CSphConfigSection & hIndex, CSphTokenizerSettings 
 
 	}
 	#if USE_PYTHON
-	else if (hIndex("pytoken_path") && hIndex["charset_type"]=="python" )
+	else if (hIndex("token_name") && hIndex["charset_type"]=="python" )
 	{
-		tSettings.m_sDictPath = hIndex["pytoken_path"]; // 使用m_sDictPath 存储python的分词类名
+		tSettings.m_sPyTokenName = hIndex.GetStr("token_name"); // 使用m_sPythonPath 存储python的分词类名
 		tSettings.m_iType = TOKENIZER_PYTHON;
 	}
 	#endif
 	else
 	{
-		sError.SetSprintf ( "unknown charset type '%s'", hIndex["charset_type"].cstr() );
+		sError.SetSprintf ( "unknown charset type '%s' or use python token by not compile --with-python.", hIndex["charset_type"].cstr() );
 		return false;
 	}
 
