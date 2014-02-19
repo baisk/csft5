@@ -24,7 +24,7 @@ class Test_token(object):
 
 	def GetAdvToken(self):
 		#return [ ( w.encode('utf8'), None, None) for w in self.token]  #返回每个词的 分词, 同义词, 词性标注
-		return [(w, None, None) for w in self.GetToken()]  ##最简单的返回格式
+		return [(w, u'爆炸', None) for w in self.GetToken()]  ##最简单的返回格式 测试同义词扩展
 
 	def SetDocument(self, word):
 		self.word = word

@@ -24350,7 +24350,25 @@ void CSphSource_Document::BuildRegularHits ( SphDocID_t uDocid, bool bPayload, b
 			m_tState.m_iBuildLastStep = m_pTokenizer->TokenIsBlended() ? 0 : 1;
 		} else
 			m_tState.m_iBuildLastStep = m_iStopwordStep;
+
+		//tmp add. Thesaurus by use extend. @coreseek
+		#if 1
+		{ 
+			const BYTE * tbuf_ptr = m_pTokenizer->GetExtend();  
+			if (tbuf_ptr){
+				while ( *tbuf_ptr ) //only get extend word according to idx
+				{
+					size_t len = strlen((const char*)tbuf_ptr);
+					SphWordID_t iWord = m_pDict->GetWordID ( tbuf_ptr ,len , true);
+					if (iWord) 
+						m_tHits.AddHit ( uDocid, iWord, m_tState.m_iHitPos ); // some position
+					tbuf_ptr += len + 1; //move next
+				}
+			}
+		}
+		#endif
 	}
+
 
 	m_tState.m_bProcessingHits = ( sWord!=NULL );
 

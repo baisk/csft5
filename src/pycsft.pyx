@@ -143,6 +143,14 @@ cdef class pyTokenWrap:  #需要一个python 的包装,减少python和c端的复
             return term
         return None
 
+    def GetExtend(self): #返回的是上一个idx对应的扩展
+        # 应该在 1-self.terms_len 之间
+        if not self.adv: return None
+        if self.term_idx < 1 or self.term_idx > self.terms_len:
+            return None
+        else:
+            return self.terms[self.term_idx-1][1]  #默认第二项是同义词扩展
+
     def _clear(self):
         pass #暂时一些清理工作可以在python的分词法端去做. ? 以后的分词法接口肯定要求在外端做完. ?
 
@@ -192,6 +200,39 @@ cdef public api int pyTokenGetToken( cpy_ref.PyObject* pyobj, BYTE* words, int* 
     else:
         return 1 #term is ended
 
+#c和python之间的函数切换会带来巨大开销 !?
+cdef public api int pyTokenGetExtend( cpy_ref.PyObject* pyobj, BYTE* words, int* ptr_len, int* p_cnt_len  ):
+    cdef object pytokenwrap
+    cdef object pyterm
+    cdef BYTE* c_str_tmp
+    cdef int c_str_len
+    cdef int maxLength
+    cdef int maxCount
+    cdef object extends
+    cdef int idx, idx_cnt
+
+    maxLength = ptr_len[0]
+    maxCount = p_cnt_len[0]
+    pytokenwrap = <object>pyobj
+    extends = pytokenwrap.GetExtend() #获得的都是上一个token对应的扩展
+    if extends:
+        idx = 0
+        idx_cnt = 0
+        for ex in extends[:maxCount]:
+            py_byte_string = ex.encode('UTF-8')
+            c_str_tmp = py_byte_string
+            c_str_len = len(py_byte_string)
+            if idx + c_str_len > maxLength:
+                break
+            memcpy(words+idx, c_str_tmp, c_str_len) #把值复制给words 结果传递给sphinx那端
+            idx += c_str_len
+            idx_cnt += 1
+
+        ptr_len[0], p_cnt_len[0] = idx, idx_cnt        
+        return 0
+    else:
+        return 1
+
 
 ## --- python cache ---
 
@@ -214,7 +255,7 @@ cdef public api cpy_ref.PyObject* createPythonTokenizerObject( const char* pytho
         # print "i got python token class\n"
         try:
             obj=clsType()
-            wrap = pyTokenWrap(obj) #use token to init wrap
+            wrap = pyTokenWrap(obj, adv=True) #use token to init wrap, adv could use Extend
             ptr = <cpy_ref.PyObject*>wrap  #convert the obj to PyObject*
             #Py_XINCREF(ptr)  #hold the ref of the obj
             IncreasePythonObject(ptr)

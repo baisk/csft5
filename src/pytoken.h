@@ -17,6 +17,7 @@ public:
 	virtual void				SetBuffer ( BYTE * sBuffer, int iLength );
 	virtual BYTE *				GetToken ();
 	virtual ISphTokenizer *		Clone ( ESphTokenizerClone eMode ) const;
+	virtual const BYTE *GetExtend(); //暂时提供一个和mmseg类似的, 作为查询扩展的接口
 
 protected:
 	BYTE m_sAccumSeg [ 3*SPH_MAX_WORD_LEN+3 ];

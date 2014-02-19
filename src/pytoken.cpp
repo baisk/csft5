@@ -66,6 +66,20 @@ BYTE * CSphTokenizer_Python<IS_QUERY>::GetToken()
 }
 
 template < bool IS_QUERY >
+const BYTE * CSphTokenizer_Python<IS_QUERY>::GetExtend()
+{
+	int iLength = SPH_MAX_WORD_LEN;
+	int i_cnt_max_extend = 3; //get at most extend 3
+
+	int ret = pyTokenGetExtend(this->_obj, m_sAccumSeg, &iLength, &i_cnt_max_extend);
+	if (ret)
+		return NULL;
+	m_sAccumSeg[iLength] = '\0'; // c风格的字符串.
+	//printf( "%s/x ", m_sAccumSeg);
+	return m_sAccumSeg;
+}
+
+template < bool IS_QUERY >
 ISphTokenizer *	CSphTokenizer_Python<IS_QUERY>::Clone( ESphTokenizerClone eMode ) const
 {
 	//ugly code. #fixme. need clear code

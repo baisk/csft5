@@ -649,6 +649,12 @@ public:
 	/// get (readonly) lowercaser
 	const CSphLowercaser &			GetLowercaser() const { return m_tLC; }
 
+#if USE_PYTHON
+public: //for pytoken
+	virtual const BYTE *GetExtend() { return NULL; }
+	//PyObject * _obj;   // need not to use polymorphic
+#endif //USE_PYTHON
+
 protected:
 	virtual bool					RemapCharacters ( const char * sConfig, DWORD uFlags, const char * sSource, bool bCanRemap, CSphString & sError );
 	virtual bool					AddSpecialsSPZ ( const char * sSpecials, const char * sDirective, CSphString & sError );
