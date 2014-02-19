@@ -13,34 +13,27 @@ CSphTokenizer_Python<IS_QUERY>::CSphTokenizer_Python()
 template < bool IS_QUERY >
 CSphTokenizer_Python<IS_QUERY>::~CSphTokenizer_Python()
 {
-	printf("in ~CSphTokenizer_Python\n");
+	if (PYSOURCE_DEBUG)
+		printf("#in ~CSphTokenizer_Python\n");
 	if (this->_obj)
 	{
-		//防止内存泄露, +1的obj必须减1
-		Py_XDECREF(this->_obj);
+		decreatePythonTokenizerObject(this->_obj); //让python端维护ref_count
 	}
 }
-
-//template < bool IS_QUERY >
-//void CSphTokenizer_Python<IS_QUERY>::bind(PyObject *obj)
-//{
-//	printf("token bind together");
-//	this->_obj = obj;
-//}
 
 template < bool IS_QUERY >
 void CSphTokenizer_Python<IS_QUERY>::init(const char  *python_path)
 {
-	printf("%s", python_path );
-	//obj is a python class object pointer
+	if (PYSOURCE_DEBUG)
+		printf("#in init\n");
+		printf("#python_path: %s\n", python_path );
 	PyObject* obj = createPythonTokenizerObject(python_path);
 	if ( obj )
 	{
-		printf("got the obj successfully\n");
+		if (PYSOURCE_DEBUG)
+			printf("got the token obj successfully\n");
 		this->_obj= obj;
-		//这里必须增加一个_obj的引用, 因为参数传递是一个借用引用, 不加1的话 _obj可能在运行中被gc
-		Py_INCREF(this->_obj);
-		Py_INCREF(this->_obj); // may cause memory leek
+		//Py_INCREF(this->_obj); 更改引用应该在cython端进行
 	}else{
 		printf("got the pytoken obj error\n");
 	}
@@ -49,21 +42,27 @@ void CSphTokenizer_Python<IS_QUERY>::init(const char  *python_path)
 template < bool IS_QUERY >
 void CSphTokenizer_Python<IS_QUERY>::SetBuffer(BYTE * sBuffer, int iLength)
 {
-	printf ("in setbuffer\n");
-	CSphTokenizer_UTF8<IS_QUERY>::SetBuffer(sBuffer, iLength);
-	//std::string words;
-	//words.assign((char*)sBuffer, iLength); //用iLength个字符串给words赋值
-
-	//Py_INCREF(this->_obj); // may cause memory leek
-	pyTokenSetBuffer(this->_obj, sBuffer, iLength); //给python端设定好词汇,然后直接得到结果. 同步接口.
+	if (PYSOURCE_DEBUG)
+		printf ("#in setbuffer\n");
+	//CSphTokenizer_UTF8<IS_QUERY>::SetBuffer(sBuffer, iLength);
+	pyTokenProcess(this->_obj, sBuffer, iLength); //给python端设定好词汇,然后直接得到结果. 同步接口.
 
 }
 
 template < bool IS_QUERY >
 BYTE * CSphTokenizer_Python<IS_QUERY>::GetToken()
 {
-	printf ("in gottoken\n");
-	return CSphTokenizer_UTF8<IS_QUERY>::GetToken();
+//	if (PYSOURCE_DEBUG)
+//		printf ("#in gottoken\n");
+	//return CSphTokenizer_UTF8<IS_QUERY>::GetToken();
+	int iLength = SPH_MAX_WORD_LEN;
+	int* p_ilength = &iLength;
+	int ret = pyTokenGetToken(this->_obj, m_sAccumSeg, p_ilength);
+	if (ret)
+		return NULL;
+	m_sAccumSeg[iLength] = '\0'; // c风格的字符串.
+	printf( "%s/x ", m_sAccumSeg);
+	return m_sAccumSeg;
 }
 
 

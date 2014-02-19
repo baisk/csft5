@@ -2,14 +2,15 @@
 
 cimport pycsft
 cimport cpython.ref as cpy_ref
-from cpython.ref cimport Py_INCREF, Py_DECREF, Py_XDECREF
+from cpython.ref cimport Py_INCREF, Py_XINCREF, Py_DECREF, Py_XDECREF, Py_CLEAR
 import os, sys
 
 import traceback
 import cython
 
-#from libcpp.string cimport string
-from libc.string cimport const_char, const_uchar
+#from libc.stdlib cimport memcpy
+
+#from libc.string cimport const_char, const_uchar  #可以被BYTE代替(从c文件中拿到)
 """
     定义
         Python 数据源
@@ -61,8 +62,11 @@ cdef public api cpy_ref.PyObject* __getPythonClassByName(const char* class_name)
 
 ## --- python tokenizer ---
 
-#cdef extern from "sphinxstd.h":
-#    typedef unsigned char BYTE
+cdef extern from "sphinxstd.h":
+    ctypedef unsigned char   BYTE
+
+cdef extern from "string.h" nogil:
+    void *memcpy  (void *TO, const void *FROM, size_t SIZE)
 
 ## --- python cache ---
 
@@ -92,18 +96,52 @@ cdef public api cpy_ref.PyObject* __getPythonClassByName(const char* class_name)
 
 ## --- python tokenizer ---
 
-# cdef class PyTokenWrap(object):
-#     """
-#     提供一个 返回给pytoken的c风格的类, 方便指针转换
-#     """
-#     cdef object pytoken
-#     def __init__(self, pytoken):
-#         self.pytoken = pytoken
-
-cdef class PyTokenWrap:
+cdef class pyTokenWrap:  #需要一个python 的包装,减少python和c端的复杂度
     cdef object pytoken
-    def __init__(self, pytoken):
-        self.pytoken = pytoken 
+    cdef object document #待分词的文档
+    cdef object terms    #分完词的term列表, list, 每个item是一个分词结果
+    cdef object terms_len #分词长度
+    cdef object term_idx
+    cdef object ret
+    cdef object adv
+
+    def __init__(self,pytoken, adv=False):
+        self.pytoken = pytoken
+        self.document = None
+        self.terms = None
+        self.terms_len = 0
+        self.term_idx = 0
+        self.adv =  adv
+
+    def Process(self, pywords):
+        self.document = pywords
+        ret = self.pytoken.SetDocument(pywords)
+        if not ret:
+            print "!!!!!!!! pytoken set document error"
+
+        if self.adv:
+            ret = self.pytoken.GetAdvToken()
+        else:
+            ret = self.pytoken.GetToken()
+
+        if not ret:
+            print "!!!!!!!! get token from pytoken error"
+        else:
+            self.terms = ret
+            self.terms_len = len(self.terms)
+            self.term_idx = 0
+
+    def GetTokenNext(self):
+        if self.term_idx == self.terms_len:
+            return None
+        else:
+            if self.adv:
+                term = self.terms[self.term_idx][0]
+            else:
+                term = self.terms[self.term_idx]
+            self.term_idx += 1
+            return term
+        return None
 
 ## --- python cache ---
 
@@ -120,31 +158,41 @@ cdef class PyTokenWrap:
 
 ## --- python tokenizer ---
 
-cdef public api void pyTokenSetBuffer( cpy_ref.PyObject* pyobj, const_uchar* words, int ilength ):
-    #cdef string words
+cdef public api void pyTokenProcess( cpy_ref.PyObject* pyobj, BYTE* words, int ilength ):
+    cdef object pytokenwrap
+    cdef object pywords
 
-    print "###here in pyTokenSetBuffer"
-    pytoken = <object>pyobj
-    pytoken1 = <object>pyobj
-    pytoken2 = <object>pyobj
-    print pytoken, sys.getrefcount(pytoken)
+    pytokenwrap = <object>pyobj
+    pywords = words[:ilength].decode('UTF-8', 'strict') #转成unicode内码, 如果不转,则交给分词法处理.
+    pytokenwrap.Process(pywords)
 
-    pywords = words[:ilength]
-    print '@@in cython', pywords
 
-    pytoken.SetBuffer(pywords)
-    terms = pytoken.GetToken()
-    for i in terms:
-        print i,
 
-cdef public api void pyTokenEcho( cpy_ref.PyObject* pyobj ):
-    print "in pyTokenEcho"
-    
+cdef public api int pyTokenGetToken( cpy_ref.PyObject* pyobj, BYTE* words, int* ptr_len  ):
+    cdef object pytokenwrap
+    cdef object pyterm
+    cdef BYTE* c_str_tmp
+    cdef int c_str_len
+    cdef int maxLength
+
+    maxLength = ptr_len[0]
+    pytokenwrap = <object>pyobj
+    pyterm = pytokenwrap.GetTokenNext()
+    if pyterm:
+        if len(pyterm) > maxLength: pyterm = pyterm[:maxLength]  #最长取前ilength个, 这里的个数是unicode值,变成utf8会是3倍(最多)长.
+        py_byte_string = pyterm.encode('UTF-8')  #必须设置一个python的obj 直接赋值给char* 会因为缺少引用计数而编译错误
+        c_str_tmp = py_byte_string
+        c_str_len = len(py_byte_string)
+        memcpy(words, c_str_tmp, c_str_len) #把值复制给words 结果传递给sphinx那端
+        ptr_len[0] =  c_str_len # 表明str的长度.
+        return 0 #in c, 0 mean success
+    else:
+        return 1 #term is ended
+
 
 ## --- python cache ---
 
 ## --- python query ---
-
 
 """
     Object creation function.
@@ -156,47 +204,27 @@ cdef public api void pyTokenEcho( cpy_ref.PyObject* pyobj ):
 
 ## --- python tokenizer ---
 
-# cdef public api ISphTokenizer * createPythonTokenizerObject ( const char* python_path):
-#     cdef CSphTokenizer_Python[False]* pyToken  #here is a indexer token IS_QUERY is false
-
-#     clsType = __findPythonClass(python_path)
-#     print "i got python token\n"
-#     if clsType:
-#         try:
-#             obj = clsType()
-#         except Exception, ex:
-#             traceback.print_exc()
-#             return NULL
-
-#         pyToken = new CSphTokenizer_Python[False] ();
-#         pyToken.bind(obj)
-#         return <ISphTokenizer *> pyToken
-#     else:
-#         return NULL
-
 cdef public api cpy_ref.PyObject* createPythonTokenizerObject( const char* python_path):
-    cdef PyTokenWrap pywrap
+    cdef cpy_ref.PyObject* ptr
     clsType = __findPythonClass(python_path)
     if clsType:
         print "i got python token class\n"
         try:
             obj=clsType()
-            #print obj.test()
-            #pywrap = new PyTokenWrap(obj) #把obj放置在一个wrap的class中, 避免指针转换 这是一个指针
-            #pywrap = PyTokenWrap(obj)
-            #print pywrap.pytoken.test()
-            return <cpy_ref.PyObject*>obj  #convert the obj to PyObject*
-            #return cython.address(pywrap)
+            wrap = pyTokenWrap(obj) #use token to init wrap
+            ptr = <cpy_ref.PyObject*>wrap  #convert the obj to PyObject*
+            Py_XINCREF(ptr)  #hold the ref of the obj
+            return ptr
         except Exception, e:
-            #traceback.print_exc()
-            print e
+            print 'create python token warp error:', e
             return NULL
     return NULL
 
+cdef public api void decreatePythonTokenizerObject( cpy_ref.PyObject* obj ):
+    Py_CLEAR(obj);  #decrease the ref of the obj 推荐使用的函数clear
 
 ## --- python cache ---
 
 ## --- python query ---
-
 
 #end of file

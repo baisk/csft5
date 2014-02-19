@@ -19,6 +19,7 @@ public:
 
 protected:
 	PyObject * _obj;
+	BYTE m_sAccumSeg [ 3*SPH_MAX_WORD_LEN+3 ];
 };
 
 #endif // PYTOKEN_H
