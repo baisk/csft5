@@ -213,14 +213,18 @@ cdef public api cpy_ref.PyObject* createPythonTokenizerObject( const char* pytho
             obj=clsType()
             wrap = pyTokenWrap(obj) #use token to init wrap
             ptr = <cpy_ref.PyObject*>wrap  #convert the obj to PyObject*
-            Py_XINCREF(ptr)  #hold the ref of the obj
+            #Py_XINCREF(ptr)  #hold the ref of the obj
+            IncreasePythonObject(ptr)
             return ptr
         except Exception, e:
             print 'create python token warp error:', e
             return NULL
     return NULL
 
-cdef public api void decreatePythonTokenizerObject( cpy_ref.PyObject* obj ):
+cdef public api void IncreasePythonObject( cpy_ref.PyObject* obj ):
+    Py_XINCREF(obj)  #hold the ref of the obj
+
+cdef public api void DecreasePythonObject( cpy_ref.PyObject* obj ):
     Py_CLEAR(obj);  #decrease the ref of the obj 推荐使用的函数clear
 
 ## --- python cache ---

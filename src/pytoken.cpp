@@ -17,7 +17,7 @@ CSphTokenizer_Python<IS_QUERY>::~CSphTokenizer_Python()
 		printf("#in ~CSphTokenizer_Python\n");
 	if (this->_obj)
 	{
-		decreatePythonTokenizerObject(this->_obj); //让python端维护ref_count
+		DecreasePythonObject(this->_obj); //让python端维护ref_count
 	}
 }
 
@@ -61,8 +61,34 @@ BYTE * CSphTokenizer_Python<IS_QUERY>::GetToken()
 	if (ret)
 		return NULL;
 	m_sAccumSeg[iLength] = '\0'; // c风格的字符串.
-	printf( "%s/x ", m_sAccumSeg);
+	//printf( "%s/x ", m_sAccumSeg);
 	return m_sAccumSeg;
+}
+
+template < bool IS_QUERY >
+ISphTokenizer *	CSphTokenizer_Python<IS_QUERY>::Clone( ESphTokenizerClone eMode ) const
+{
+	//ugly code. #fixme. need clear code
+	if (PYSOURCE_DEBUG)
+		printf ("#in Clone\n");
+	CSphTokenizerBase * pClone;
+	if ( eMode!=SPH_CLONE_INDEX )
+	{
+		CSphTokenizer_Python<true>* pClone_py = new CSphTokenizer_Python<true>();
+		pClone_py->_obj = this->_obj; //引用计数?
+		IncreasePythonObject(pClone_py->_obj); //和init时一样, copy保证引用计数要+1
+		pClone = (CSphTokenizerBase*)pClone_py;
+	}
+	else
+	{
+		CSphTokenizer_Python<false>* pClone_py = new CSphTokenizer_Python<false>();
+		pClone_py->_obj = this->_obj; //引用计数?
+		IncreasePythonObject(pClone_py->_obj); //和init时一样, copy保证引用计数要+1
+		pClone = (CSphTokenizerBase*)pClone_py;
+	}
+
+	pClone->CloneBase ( this, eMode );
+	return pClone;
 }
 
 

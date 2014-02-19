@@ -1432,7 +1432,7 @@ public:
 	virtual SphWordID_t	GetWordID ( BYTE * pWord );
 
 private:
-	bool				m_bPrefixes;
+	bool				m_bPrefixes; //comment it
 	bool				m_bInfixes;
 };
 

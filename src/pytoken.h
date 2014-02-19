@@ -16,10 +16,12 @@ public:
 	void init(const char* python_path);
 	virtual void				SetBuffer ( BYTE * sBuffer, int iLength );
 	virtual BYTE *				GetToken ();
+	virtual ISphTokenizer *		Clone ( ESphTokenizerClone eMode ) const;
 
 protected:
-	PyObject * _obj;
 	BYTE m_sAccumSeg [ 3*SPH_MAX_WORD_LEN+3 ];
+public:
+	PyObject * _obj; //改为public, 否则在clone函数中无法复制_obj
 };
 
 #endif // PYTOKEN_H
