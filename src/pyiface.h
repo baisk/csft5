@@ -58,7 +58,7 @@ public:
   // RunFct fct;
 
   ConfProviderWrap(PyObject *obj):obj(obj) {} //, RunFct fct);
-  virtual ~ConfProviderWrap(){}
+  virtual ~ConfProviderWrap();
 
   virtual int process(CSphConfig & hConf);
 };

@@ -86,6 +86,13 @@ const CSphString & IConfProvider::GetErrorMessage () const
     return m_sError;
 }
 
+
+ConfProviderWrap::~ConfProviderWrap()
+{
+    // clear
+    destoryPythonConfObject(obj);
+    obj = NULL;
+}
 /*
  *
  */

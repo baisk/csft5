@@ -1507,6 +1507,7 @@ const char * sphLoadConfig ( const char * sOptConfig, bool bQuiet, CSphConfigPar
             if(nRet != 0) {
                 // error happen.
             }
+            delete pyconf;
         }
 #else
         sphDie ( "Python layer defined, but indexer does Not supports python. used --enable-python to recompile.");

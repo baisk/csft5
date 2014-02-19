@@ -5,6 +5,8 @@ cimport cpython.ref as cpy_ref
 import os
 from libcpp cimport bool
 
+from cpython.ref cimport Py_INCREF, Py_XINCREF, Py_DECREF, Py_XDECREF, Py_CLEAR
+
 """
     定义
         Python 数据源
@@ -13,6 +15,9 @@ from libcpp cimport bool
         Python Cache 的 C++ <-> Python 的调用接口
 """
 
+
+#test gc
+import gc
 
 # Ref: http://stackoverflow.com/questions/1176136/convert-string-to-python-class-object
 def __findPythonClass(sName):
@@ -152,7 +157,10 @@ cdef class PyConfProviderWrap:
 ## --- python conf ---
 
 cdef public int py_iconfprovider_process(void *ptr, PySphConfig& hConf):
+    #gc.collect()
     cdef PyConfProviderWrap self = <PyConfProviderWrap>(ptr)
+    import sys
+    print sys.getrefcount(self)
     return self.process(hConf)
 
 ## --- python source ---
@@ -172,14 +180,22 @@ cdef public int py_iconfprovider_process(void *ptr, PySphConfig& hConf):
 
 cdef public api IConfProvider* createPythonConfObject(const char* class_name):
     cdef PyConfProviderWrap pyconf
+    #cdef cpy_ref.PyObject* ptr
     sName = class_name
     clsType = __findPythonClass(sName)
     if clsType:
         obj = clsType()
         pyconf = PyConfProviderWrap(obj)
+        Py_XINCREF(<cpy_ref.PyObject*>pyconf)  
         return <IConfProvider*>(pyconf._p)
     else:
         return NULL # provider not found.
+
+cdef public api void destoryPythonConfObject(cpy_ref.PyObject*  ptr):
+    import sys
+    print sys.getrefcount(<object>ptr),'0000\n\n\n'
+    Py_CLEAR(ptr); 
+    return
 
 ## --- python source ---
 
