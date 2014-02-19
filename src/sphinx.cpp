@@ -2404,12 +2404,6 @@ ISphTokenizer *	sphCreatePythonTokenizer ( const char* python_path )
 	return (ISphTokenizer *)tokenizer;
 }
 
-//ISphTokenizer *	sphCreatePythonTokenizer ( const char* python_path )
-//{
-//	//这里把提前生成 python obj的任务放到这里, 先生成obj, 然后再生成CSphTokenizer_Python 对象
-//	return createPythonTokenizerObject(python_path);
-//}
-
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
@@ -24283,7 +24277,7 @@ void CSphSource_Document::BuildSubstringHits ( SphDocID_t uDocid, bool bPayload,
 
 void CSphSource_Document::BuildRegularHits ( SphDocID_t uDocid, bool bPayload, bool bSkipEndMarker )
 {
-	printf("### in BuildRegularHits\n");
+	//printf("### in BuildRegularHits\n");
 	bool bWordDict = m_pDict->GetSettings().m_bWordDict;
 	bool bGlobalPartialMatch = !bWordDict && ( m_iMinPrefixLen > 0 || m_iMinInfixLen > 0 );
 
@@ -24302,7 +24296,7 @@ void CSphSource_Document::BuildRegularHits ( SphDocID_t uDocid, bool bPayload, b
 		&& ( sWord = m_pTokenizer->GetToken() )!=NULL )
 	{
 		// test dump sword result:
-		printf("@%s ", sWord);
+		//printf("@%s ", sWord);
 		int iLastBlendedStart = TrackBlendedStart ( m_pTokenizer, iBlendedHitsStart, m_tHits.Length() );
 		iLastTokenStart = m_tHits.Length();
 
@@ -24351,7 +24345,7 @@ void CSphSource_Document::BuildRegularHits ( SphDocID_t uDocid, bool bPayload, b
 			printf ( "doc %d. pos %d. %s\n", uDocid, HITMAN::GetPos ( m_tState.m_iHitPos ), sWord );
 #endif
 			iBlendedHitsStart = iLastBlendedStart;
-			printf("##uDocid : %d, iWord: %d, m_tState.m_iHitPos: %d \n", uDocid, iWord, m_tState.m_iHitPos);
+			//printf("##uDocid : %d, iWord: %d, m_tState.m_iHitPos: %d \n", uDocid, iWord, m_tState.m_iHitPos);
 			m_tHits.AddHit ( uDocid, iWord, m_tState.m_iHitPos );
 			m_tState.m_iBuildLastStep = m_pTokenizer->TokenIsBlended() ? 0 : 1;
 		} else
@@ -24387,7 +24381,7 @@ void CSphSource_Document::BuildRegularHits ( SphDocID_t uDocid, bool bPayload, b
 
 void CSphSource_Document::BuildHits ( CSphString & sError, bool bSkipEndMarker )
 {
-	printf("###in CSphSource_Document::BuildHits\n");
+	//printf("###in CSphSource_Document::BuildHits\n");
 	SphDocID_t uDocid = m_tDocInfo.m_iDocID;
 
 	CSphVector<BYTE> dFiltered;
@@ -24445,12 +24439,10 @@ void CSphSource_Document::BuildHits ( CSphString & sError, bool bSkipEndMarker )
 
 		if ( tField.m_eWordpart!=SPH_WORDPART_WHOLE )
 		{
-			printf("###call BuildSubstringHits\n");
 			BuildSubstringHits ( uDocid, tField.m_bPayload, tField.m_eWordpart, bSkipEndMarker );
 		}
 		else
 		{
-			printf("###call BuildRegularHits\n");
 			BuildRegularHits ( uDocid, tField.m_bPayload, bSkipEndMarker );
 		}
 		if ( m_tState.m_bProcessingHits )

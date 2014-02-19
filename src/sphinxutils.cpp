@@ -1049,8 +1049,7 @@ bool CSphConfigParser::Parse ( const char * sFileName, const char * pBuffer )
 
 bool sphConfTokenizer ( const CSphConfigSection & hIndex, CSphTokenizerSettings & tSettings, CSphString & sError )
 {
-	printf("here in sphConfTokenizer");
-
+	//printf("here in sphConfTokenizer");
 	tSettings.m_iNgramLen = Max ( hIndex.GetInt ( "ngram_len" ), 0 );
 
 	if ( !hIndex("charset_type") || hIndex["charset_type"]=="sbcs" )

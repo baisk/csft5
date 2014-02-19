@@ -120,14 +120,14 @@ cdef class pyTokenWrap:  #需要一个python 的包装,减少python和c端的复
             print "!!!!!!!! pytoken set document error"
 
         if self.adv:
-            ret = self.pytoken.GetAdvToken()
+            self.terms = self.pytoken.GetAdvToken()
         else:
-            ret = self.pytoken.GetToken()
+            self.terms = self.pytoken.GetToken()
 
-        if not ret:
+        if not self.terms:
             print "!!!!!!!! get token from pytoken error"
         else:
-            self.terms = ret
+            self._clear() #clear the terms
             self.terms_len = len(self.terms)
             self.term_idx = 0
 
@@ -142,6 +142,9 @@ cdef class pyTokenWrap:  #需要一个python 的包装,减少python和c端的复
             self.term_idx += 1
             return term
         return None
+
+    def _clear(self):
+        pass #暂时一些清理工作可以在python的分词法端去做. ? 以后的分词法接口肯定要求在外端做完. ?
 
 ## --- python cache ---
 
@@ -208,7 +211,7 @@ cdef public api cpy_ref.PyObject* createPythonTokenizerObject( const char* pytho
     cdef cpy_ref.PyObject* ptr
     clsType = __findPythonClass(python_path)
     if clsType:
-        print "i got python token class\n"
+        # print "i got python token class\n"
         try:
             obj=clsType()
             wrap = pyTokenWrap(obj) #use token to init wrap

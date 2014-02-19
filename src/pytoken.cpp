@@ -2,7 +2,7 @@
 #include "pycsft.h"
 #include "string"
 
-#define PYSOURCE_DEBUG 1
+#define PYSOURCE_DEBUG 0
 
 template < bool IS_QUERY >
 CSphTokenizer_Python<IS_QUERY>::CSphTokenizer_Python()
@@ -25,13 +25,13 @@ template < bool IS_QUERY >
 void CSphTokenizer_Python<IS_QUERY>::init(const char  *python_path)
 {
 	if (PYSOURCE_DEBUG)
-		printf("#in init\n");
-		printf("#python_path: %s\n", python_path );
+		printf("#in init\n#python_path: %s\n", python_path);
+
 	PyObject* obj = createPythonTokenizerObject(python_path);
 	if ( obj )
 	{
 		if (PYSOURCE_DEBUG)
-			printf("got the token obj successfully\n");
+			printf("#got thef token obj successfully\n");
 		this->_obj= obj;
 		//Py_INCREF(this->_obj); 更改引用应该在cython端进行
 	}else{
