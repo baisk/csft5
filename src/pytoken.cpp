@@ -1,5 +1,6 @@
 #include "pytoken.h"
 #include "pycsft.h"
+#include "string"
 
 #define PYSOURCE_DEBUG 1
 
@@ -12,6 +13,7 @@ CSphTokenizer_Python<IS_QUERY>::CSphTokenizer_Python()
 template < bool IS_QUERY >
 CSphTokenizer_Python<IS_QUERY>::~CSphTokenizer_Python()
 {
+	printf("in ~CSphTokenizer_Python\n");
 	if (this->_obj)
 	{
 		//防止内存泄露, +1的obj必须减1
@@ -38,6 +40,7 @@ void CSphTokenizer_Python<IS_QUERY>::init(const char  *python_path)
 		this->_obj= obj;
 		//这里必须增加一个_obj的引用, 因为参数传递是一个借用引用, 不加1的话 _obj可能在运行中被gc
 		Py_INCREF(this->_obj);
+		Py_INCREF(this->_obj); // may cause memory leek
 	}else{
 		printf("got the pytoken obj error\n");
 	}
@@ -48,7 +51,11 @@ void CSphTokenizer_Python<IS_QUERY>::SetBuffer(BYTE * sBuffer, int iLength)
 {
 	printf ("in setbuffer\n");
 	CSphTokenizer_UTF8<IS_QUERY>::SetBuffer(sBuffer, iLength);
-	pyTokenSetBuffer(this->_obj); //给python端设定好词汇,然后直接得到结果. 同步接口.
+	//std::string words;
+	//words.assign((char*)sBuffer, iLength); //用iLength个字符串给words赋值
+
+	//Py_INCREF(this->_obj); // may cause memory leek
+	pyTokenSetBuffer(this->_obj, sBuffer, iLength); //给python端设定好词汇,然后直接得到结果. 同步接口.
 
 }
 

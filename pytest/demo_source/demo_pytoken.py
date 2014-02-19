@@ -15,13 +15,15 @@ class Test_token(object):
 		self.word = None
 
 	def GetToken(self):
+		print "########in demo_pytoken: GetToken"
 		words =  list(jieba.cut(self.word))
 		return [w.encode('utf8') for w in words]  #should be utf8 coding
 
 	def SetBuffer(self, word):
 		print "########in demo_pytoken: SetBuffer"
-		if type(word) == str:
-			word = word.decode('utf8')
+		print "######## ", word
+		# if type(word) == str:
+		# 	word = word.decode('utf8')
 		self.word = word
 
 

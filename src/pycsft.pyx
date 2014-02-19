@@ -3,11 +3,13 @@
 cimport pycsft
 cimport cpython.ref as cpy_ref
 from cpython.ref cimport Py_INCREF, Py_DECREF, Py_XDECREF
-import os
+import os, sys
 
 import traceback
 import cython
 
+#from libcpp.string cimport string
+from libc.string cimport const_char, const_uchar
 """
     定义
         Python 数据源
@@ -59,14 +61,8 @@ cdef public api cpy_ref.PyObject* __getPythonClassByName(const char* class_name)
 
 ## --- python tokenizer ---
 
-# cdef extern from "pytoken.h":
-#     cdef cppclass CSphTokenizer_Python:
-#         CSphTokenizer_Python ()
-#         ~CSphTokenizer_Python  ()
-#         bind(PyObject *obj)
-#         #SetBuffer ( BYTE * sBuffer, int iLength )
-#         #GetToken ()
-
+#cdef extern from "sphinxstd.h":
+#    typedef unsigned char BYTE
 
 ## --- python cache ---
 
@@ -124,11 +120,23 @@ cdef class PyTokenWrap:
 
 ## --- python tokenizer ---
 
-cdef public api void pyTokenSetBuffer( cpy_ref.PyObject* pyobj ):
+cdef public api void pyTokenSetBuffer( cpy_ref.PyObject* pyobj, const_uchar* words, int ilength ):
+    #cdef string words
+
+    print "###here in pyTokenSetBuffer"
     pytoken = <object>pyobj
-    pytoken.SetBuffer()
-    pytoken.GetToken()
-    
+    pytoken1 = <object>pyobj
+    pytoken2 = <object>pyobj
+    print pytoken, sys.getrefcount(pytoken)
+
+    pywords = words[:ilength]
+    print '@@in cython', pywords
+
+    pytoken.SetBuffer(pywords)
+    terms = pytoken.GetToken()
+    for i in terms:
+        print i,
+
 cdef public api void pyTokenEcho( cpy_ref.PyObject* pyobj ):
     print "in pyTokenEcho"
     
