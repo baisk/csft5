@@ -1314,6 +1314,8 @@ bool XQParser_t::Parse ( XQQuery_t & tParsed, const char * sQuery, const ISphTok
 	m_iOvershortStep = tSettings.m_iOvershortStep;
 
 	m_pTokenizer->SetBuffer ( m_sQuery, m_iQueryLen );
+	//hack in
+	printf("#### m_sQuery in Parse, %s, ##\n", m_sQuery);
 	int iRes = yyparse ( this );
 
 	if ( ( iRes || !m_pParsed->m_sParseError.IsEmpty() ) && !m_bEmpty )

@@ -7,6 +7,7 @@ import os, sys
 
 import traceback
 import cython
+from libcpp.set cimport set 
 
 #from libc.stdlib cimport memcpy
 
@@ -151,6 +152,7 @@ cdef class pyTokenWrap:  #需要一个python 的包装,减少python和c端的复
         else:
             return self.terms[self.term_idx-1][1]  #默认第二项是同义词扩展
 
+
     def _clear(self):
         pass #暂时一些清理工作可以在python的分词法端去做. ? 以后的分词法接口肯定要求在外端做完. ?
 
@@ -177,6 +179,23 @@ cdef public api void pyTokenProcess( cpy_ref.PyObject* pyobj, BYTE* words, int i
     pywords = words[:ilength].decode('UTF-8', 'strict') #转成unicode内码, 如果不转,则交给分词法处理.
     pytokenwrap.Process(pywords)
 
+cdef public api void pyGotAllResult( cpy_ref.PyObject* pyobj, void * p_segment ):
+    cdef set[int]* s_segment
+
+    s_segment = < set[int]* >p_segment # convert to a segment
+    # s_segment[0] = {1,2,3,4,5} #test pas
+    pytokenwrap = <object>pyobj
+
+    pyterm = pytokenwrap.GetTokenNext()
+    seg_set = {}
+    offset = 0
+    while(pyterm):
+        py_byte_string = pyterm.encode('UTF-8')
+        c_str_len = len(py_byte_string)
+        seg_set.add(offset+c_str_len)
+        offset += c_str_len
+        pyterm = pytokenwrap.GetTokenNext()
+    s_segment[0] = seg_set # trans to s_segment
 
 
 cdef public api int pyTokenGetToken( cpy_ref.PyObject* pyobj, BYTE* words, int* ptr_len  ):

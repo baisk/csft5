@@ -5067,6 +5067,7 @@ void CSphTokenizer_UTF8<IS_QUERY>::SetBuffer ( BYTE * sBuffer, int iLength )
 
 	m_iOvershortCount = 0;
 	m_bBoundary = m_bTokenBoundary = false;
+	printf ("%s\n", (char*)m_pCur );
 }
 
 
@@ -17305,6 +17306,10 @@ bool CSphIndex_VLN::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pRe
 
 	CSphVector<BYTE> dFiltered;
 	const BYTE * sModifiedQuery = (BYTE *)pQuery->m_sQuery.cstr();
+
+	//hack in. here is not change
+	printf("###### %s\n",sModifiedQuery);
+
 	if ( m_pFieldFilter && m_pFieldFilter->Apply ( sModifiedQuery, 0, dFiltered ) )
 		sModifiedQuery = dFiltered.Begin();
 
@@ -24352,8 +24357,9 @@ void CSphSource_Document::BuildRegularHits ( SphDocID_t uDocid, bool bPayload, b
 			m_tState.m_iBuildLastStep = m_iStopwordStep;
 
 		//tmp add. Thesaurus by use extend. @coreseek
-		#if 1
-		{ 
+
+		#if 0 // fixme 关闭同义词接口.
+		{ //fixme add if check adv
 			const BYTE * tbuf_ptr = m_pTokenizer->GetExtend();  
 			if (tbuf_ptr){
 				while ( *tbuf_ptr ) //only get extend word according to idx
