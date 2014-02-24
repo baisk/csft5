@@ -23,6 +23,8 @@
 #include <errno.h>
 #include <signal.h>
 
+#include "py_layer.h"
+
 #if USE_WINDOWS
 	#define snprintf	_snprintf
 
@@ -1826,6 +1828,20 @@ int main ( int argc, char ** argv )
 		sphAotSetCacheSize ( hIndexer.GetSize ( "lemmatizer_cache", 262144 ) );
 	}
 
+    /////////////////////
+    // init python layer
+    ////////////////////
+    if ( hConf("python") && hConf["python"]("python") )
+    {
+#if USE_PYTHON
+        CSphConfigSection & hPython = hConf["python"]["python"];
+        if(!cftInitialize(hPython))
+            sphDie ( "Python layer's initiation failed.");
+#else
+        sphDie ( "Python layer defined, but indexer does Not supports python. used --enable-python to recompile.");
+#endif
+    }
+
 	/////////////////////
 	// index each index
 	////////////////////
@@ -1923,6 +1939,7 @@ int main ( int argc, char ** argv )
 #if SPH_DEBUG_LEAKS
 	sphAllocsStats ();
 #endif
+    cftShutdown(); //clean up
 
 	return bIndexedOk ? 0 : 1;
 }

@@ -37,6 +37,10 @@
 #include <glob.h>
 #endif
 
+#include "py_layer.h"
+#include "pyiface.h"
+#include "pycsft.h"
+
 //////////////////////////////////////////////////////////////////////////
 // STRING FUNCTIONS
 //////////////////////////////////////////////////////////////////////////
@@ -59,7 +63,7 @@ static char * rtrim ( char * sLine )
 }
 
 
-static char * trim ( char * sLine )
+char * trim ( char * sLine )
 {
 	return ltrim ( rtrim ( sLine ) );
 }
@@ -494,6 +498,16 @@ static KeyDesc_t g_dKeysSearchd[] =
 	{ NULL,						0, NULL }
 };
 
+// -coreseek -pysource
+static KeyDesc_t g_dKeysPython[] =
+{
+    { "path",	KEY_LIST, NULL },
+    { "python_home",	0, NULL },  // do NOT use this configure entry.
+    { "__debug_object_class",	0, NULL },
+    { "config_class",	0, NULL },  // 提供配置数据的 Python 类
+    { NULL,						0, NULL }
+};
+
 //////////////////////////////////////////////////////////////////////////
 
 CSphConfigParser::CSphConfigParser ()
@@ -508,6 +522,7 @@ bool CSphConfigParser::IsPlainSection ( const char * sKey )
 	if ( !strcasecmp ( sKey, "indexer" ) )		return true;
 	if ( !strcasecmp ( sKey, "searchd" ) )		return true;
 	if ( !strcasecmp ( sKey, "search" ) )		return true;
+    if ( !strcasecmp ( sKey, "python" ) )		return true; //-coreseek -pysource
 	return false;
 }
 
@@ -528,7 +543,7 @@ bool CSphConfigParser::AddSection ( const char * sType, const char * sName )
 	if ( !m_tConf.Exists ( m_sSectionType ) )
 		m_tConf.Add ( CSphConfigType(), m_sSectionType ); // FIXME! be paranoid, verify that it returned true
 
-	if ( m_tConf[m_sSectionType].Exists ( m_sSectionName ) )
+    if ( m_tConf[m_sSectionType].Exists ( m_sSectionName ) )
 	{
 		snprintf ( m_sError, sizeof(m_sError), "section '%s' (type='%s') already exists", sName, sType );
 		return false;
@@ -581,6 +596,7 @@ bool CSphConfigParser::ValidateKey ( const char * sKey )
 	else if ( m_sSectionType=="index" )		pDesc = g_dKeysIndex;
 	else if ( m_sSectionType=="indexer" )	pDesc = g_dKeysIndexer;
 	else if ( m_sSectionType=="searchd" )	pDesc = g_dKeysSearchd;
+    else if ( m_sSectionType=="python" )	pDesc = g_dKeysPython;      // -coreseek -pysource
 	if ( !pDesc )
 	{
 		snprintf ( m_sError, sizeof(m_sError), "unknown section type '%s'", m_sSectionType.cstr() );
@@ -903,7 +919,7 @@ bool CSphConfigParser::Parse ( const char * sFileName, const char * pBuffer )
 				continue;
 			}
 			if ( IsNamedSection(sToken) )	{ m_sSectionType = sToken; sToken[0] = '\0'; LOC_POP (); LOC_PUSH ( S_SECNAME ); LOC_BACK(); continue; }
-											LOC_ERROR2 ( "invalid section type '%s'", sToken );
+                                            LOC_ERROR2 ( "invalid section type '%s'", sToken );
 		}
 
 		// handle S_CHR state
@@ -1493,7 +1509,33 @@ const char * sphLoadConfig ( const char * sOptConfig, bool bQuiet, CSphConfigPar
 		sphDie ( "failed to parse config file '%s'", sOptConfig );
 
 	CSphConfig & hConf = cp.m_tConf;
-	if ( !hConf ( "index" ) )
+    // process python config layer.
+    if ( hConf("python") && hConf["python"]("python") )
+    {
+#if USE_PYTHON
+        CSphConfigSection & hPython = hConf["python"]["python"];
+        // as we supported pyconf, need init python layer here. -> leave origin init code along, it doesn't h
+        if(!cftInitialize(hPython))
+            sphDie ( "Python layer's initiation failed.");
+
+        if( hPython("config_class") ) {
+            CSphString config_class = hPython.GetStr ( "config_class" );
+            IConfProvider* pyconf = createPythonConfObject(config_class.cstr());
+            if(!pyconf)
+                 sphDie ( "Python configure layer's initiation failed.");
+            // call process.
+            int nRet = pyconf->process(hConf);
+            if(nRet != 0) {
+                // error happen.
+            }
+            delete pyconf;
+        }
+#else
+        sphDie ( "Python layer defined, but indexer does Not supports python. used --enable-python to recompile.");
+#endif
+    }
+
+    if ( !hConf ( "index" ) )
 		sphDie ( "no indexes found in config file '%s'", sOptConfig );
 
 	return sOptConfig;
