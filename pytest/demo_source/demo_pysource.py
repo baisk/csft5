@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 import time
+DEBUG = False
 
 documents = [
 	{
@@ -81,7 +82,8 @@ class TestSource(object):
 			source_conf 是 python 的 dict 对象， 记录了由配置文件提供的 数据源信息；
 			@source_conf 	Dictionary
 		"""
-		print 'pysource, setup called'
+		if DEBUG:
+			print 'pysource, setup called'
 		return True
 		#return False
 
@@ -128,7 +130,8 @@ class TestSource(object):
 			与之前的 JoinField 不同，这里 一个 docid 的 一个字段只能被设置一次 （其实连续设置没问题，但 Pos 计算会错）。
 			- 因此，在 C++ 部分，就不再额外需要跟踪 m_iJoinedHitPositions 了
 		"""
-		print field_name, docinfo, hit_collector
+		if DEBUG:
+			print field_name, docinfo, hit_collector
 		if True:
 			# 一次处理一个全文字段
 			if field_name == 'comments':
@@ -147,12 +150,14 @@ class TestSource(object):
 		#docinfo.setField(self.field2id["comments"], doc['title'])
 		#docinfo.setField(self.field2id["tasks"], doc['title'])
 		# fieldname => the code knows which is the joint field. -> IterateJoinedHits
-		print 'pysource, feedJoinField'
+		if DEBUG:
+			print 'pysource, feedJoinField'
 		pass
 
 	# no hit_collector in mva , for dHits is reused in building mva values.
 	def getMultiValueAttribute(self, fieldname):
-		print 'pysource, feedMultiValueAttribute' # return (docid, val)
+		if DEBUG:
+			print 'pysource, feedMultiValueAttribute' # return (docid, val)
 		if fieldname == 'tag':
 			if self._itag < len(join_docs):
 				v = ( join_docs[self._itag]['id'] ,  join_docs[self._itag]['tag'] ) 
@@ -167,7 +172,7 @@ class TestSource(object):
 
 	def getKillList(self):
 		# 参数待定
-		print 'pysource, feedKillList'
+		#print 'pysource, feedKillList'
 		return [ 105, 1000 ]
 
 	"""
@@ -201,25 +206,29 @@ class TestSource(object):
 		#print schema.fieldsCount(), schema.attributeCount()
 		#print schema.fieldsInfo(1), schema.attributeInfo(1)
 		# build attr -> id map
-		if True:
+		if DEBUG:
 			for i in range(0, schema.fieldsCount()):
 				print i,  schema.fieldsInfo(i)
 			for i in range(0, schema.attributeCount()):
 				print i,  schema.attributeInfo(i)
 
-		print 'pysource, Connect'
+		if DEBUG:
+			print 'pysource, Connect'
 		return True
 
 	def beforeIndex(self):
-		print 'pysource, beforeIndex'
+		if DEBUG:
+			print 'pysource, beforeIndex'
 		pass
 
 	def afterIndex(self, bNormalExit = True):
-		print 'pysource, afterIndex', bNormalExit
+		if DEBUG:
+			print 'pysource, afterIndex', bNormalExit
 		pass
 
 	def indexFinished(self):
-		print 'pysource, indexFinished'
+		if DEBUG:
+			print 'pysource, indexFinished'
 		pass
 
 

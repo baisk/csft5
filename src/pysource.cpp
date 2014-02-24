@@ -1,8 +1,8 @@
 #include "pysource.h"
 #include "pycsft.h"
 
-#define PYSOURCE_DEBUG 1
-//#define PYSOURCE_DEBUG 0
+//#define PYSOURCE_DEBUG 1
+#define PYSOURCE_DEBUG 0
 
 #define LOC_ERROR2(_msg,_arg,_arg2)		{ sError.SetSprintf ( _msg, _arg, _arg2 ); return false; }
 
