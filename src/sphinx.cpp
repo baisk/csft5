@@ -5563,6 +5563,9 @@ BYTE *	CSphTokenizer_UTF8MMSeg< IS_QUERY >::GetToken ()
 	//return NULL;
 }
 
+
+
+
 template < bool IS_QUERY >
 ISphTokenizer * CSphTokenizer_UTF8MMSeg< IS_QUERY >::Clone ( ESphTokenizerClone eMode ) const
 {
@@ -5587,6 +5590,21 @@ ISphTokenizer * CSphTokenizer_UTF8MMSeg< IS_QUERY >::Clone ( ESphTokenizerClone 
 	pClone->CloneBase ( this, eMode );
 	return pClone;
 }
+
+//使用以下代码看起来也没有错误.
+//template < bool IS_QUERY >
+//ISphTokenizer * CSphTokenizer_UTF8MMSeg<IS_QUERY>::Clone ( ESphTokenizerClone eMode ) const
+//{
+//    CSphTokenizerBase * pClone;
+//    if ( eMode!=SPH_CLONE_INDEX )
+//        pClone = new CSphTokenizer_UTF8MMSeg<true>();
+//    else
+//        pClone = new CSphTokenizer_UTF8MMSeg<false>();
+//    pClone->CloneBase ( this, eMode );
+//    ((CSphTokenizer_UTF8MMSeg*)pClone)->m_dictpath = m_dictpath;
+//    return pClone;
+//}
+
 
 template < bool IS_QUERY >
 const BYTE* CSphTokenizer_UTF8MMSeg< IS_QUERY >::GetThesaurus(BYTE * sBuffer, int iLength )
