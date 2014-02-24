@@ -305,6 +305,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\src\tokenizer_zhcn.cpp"
+				>
+			</File>
+			<File
 				RelativePath="..\src\sphinxaot.cpp"
 				>
 			</File>
