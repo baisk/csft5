@@ -159,8 +159,8 @@ cdef class PyConfProviderWrap:
 cdef public int py_iconfprovider_process(void *ptr, PySphConfig& hConf):
     #gc.collect()
     cdef PyConfProviderWrap self = <PyConfProviderWrap>(ptr)
-    import sys
-    print sys.getrefcount(self)
+    #import sys
+    #print sys.getrefcount(self)
     return self.process(hConf)
 
 ## --- python source ---
@@ -192,8 +192,8 @@ cdef public api IConfProvider* createPythonConfObject(const char* class_name):
         return NULL # provider not found.
 
 cdef public api void destoryPythonConfObject(cpy_ref.PyObject*  ptr):
-    import sys
-    print sys.getrefcount(<object>ptr),'0000\n\n\n'
+    #import sys
+    #print sys.getrefcount(<object>ptr),'0000\n\n\n'
     Py_CLEAR(ptr); 
     return
 
