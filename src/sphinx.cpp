@@ -2095,7 +2095,7 @@ protected:
 	BYTE m_sAccumSeg [ 3*SPH_MAX_WORD_LEN+3 ];
 	BYTE *				m_pAccumSeg;							///< current accumulator position
 	int					m_iLastTokenLen;			///< last token length, in codepoints
-	int					m_iLastTokenBufferLen;		///< the buffer length -- coreseek;	use in mmseg patch.
+	//int					m_iLastTokenBufferLen;		///< the buffer length -- coreseek;	use in mmseg patch.
 	size_t m_segoffset;
 protected:
 	char* m_segToken;
@@ -5455,10 +5455,6 @@ CSphTokenizer_Python<IS_QUERY>::CSphTokenizer_Python()
 	:CSphTokenizer_UTF8<IS_QUERY>::CSphTokenizer_UTF8 ()
 {
 	//mimic the mmseg token
-	//this->m_pAccumSeg = m_sAccumSeg; //?
-
-	m_iLastTokenBufferLen = 0;
-	//m_iLastTokenLenMMSeg = 0;
 }
 
 template < bool IS_QUERY >
@@ -5499,7 +5495,7 @@ void CSphTokenizer_Python<IS_QUERY>::init(const char  *python_path)
 	this->m_tLC.AddRemaps ( dRemaps, FLAG_CODEPOINT_NGRAM | FLAG_CODEPOINT_SPECIAL ); // !COMMIT support other n-gram lengths than 1
 	//ENDCJK
 	this->m_pAccumSeg = m_sAccumSeg;
-	m_iLastTokenBufferLen = 0;
+	this->m_iLastTokenBufferLen = 0;
 	//m_iLastTokenLenMMSeg = 0;	
 }
 
@@ -5532,11 +5528,11 @@ bool CSphTokenizer_Python<IS_QUERY>::IsSegment(const BYTE * pCur)
 	int offset = pCur - this->m_pBuffer;
 	if (SegmentOffset.find(offset) != SegmentOffset.end() )
 	{
-		printf ("True\n");
+		//printf ("True\n");
 		return true;
 	}
 
-	printf("False\n");
+	//printf("False\n");
 	return false;
 }
 
@@ -5571,18 +5567,19 @@ BYTE * CSphTokenizer_Python<IS_QUERY>::GetToken()
 			m_segToken = (char*)this->m_pTokenStart;
 
 		if ( (m_pAccumSeg - m_sAccumSeg)<SPH_MAX_WORD_LEN )  {  //fixme: SPH_MAX_WORD_LEN is len of uni, this is len of utf8
-			::memcpy(m_pAccumSeg, tok, m_iLastTokenBufferLen);
+			::memcpy(m_pAccumSeg, tok, this->m_iLastTokenBufferLen);
 			this->m_pAccumSeg += this->m_iLastTokenBufferLen;
 			//this->m_iLastTokenLenMMSeg += m_iLastTokenLen;
-			printf("#### %s ", m_sAccumSeg );
+			//printf("#### %s ", m_sAccumSeg );
 		}
 	}
 	{
-		printf ("out here!!!"); sphDie("i die here");
+		//printf ("out here!!!"); sphDie("i die here");
 		*m_pAccumSeg = 0;
 		this->m_iLastTokenBufferLen = m_pAccumSeg - m_sAccumSeg;
+		printf("%d, %d", &m_pAccumSeg, &m_sAccumSeg);
 		m_pAccumSeg = m_sAccumSeg;
-		printf( "###%s &&&  \n", m_sAccumSeg);
+		printf( "#%s ", m_sAccumSeg);
 		//m_segToken = (char*)(m_pTokenEnd-m_iLastTokenBufferLen);
 		return m_sAccumSeg;
 	}
@@ -24551,7 +24548,7 @@ void CSphSource_Document::BuildRegularHits ( SphDocID_t uDocid, bool bPayload, b
 		&& ( sWord = m_pTokenizer->GetToken() )!=NULL )
 	{
 		// test dump sword result:
-		printf("@@%s ", sWord);
+		//printf("@@%s ", sWord);
 		int iLastBlendedStart = TrackBlendedStart ( m_pTokenizer, iBlendedHitsStart, m_tHits.Length() );
 		iLastTokenStart = m_tHits.Length();
 
