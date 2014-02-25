@@ -5123,7 +5123,7 @@ void CSphTokenizer_UTF8<IS_QUERY>::SetBuffer ( BYTE * sBuffer, int iLength )
 
 	m_iOvershortCount = 0;
 	m_bBoundary = m_bTokenBoundary = false;
-	printf ("%s\n", (char*)m_pCur );
+	//printf ("%s\n", (char*)m_pCur );
 }
 
 
@@ -5448,13 +5448,26 @@ BYTE * CSphTokenizer_UTF8Ngram<IS_QUERY>::GetToken ()
 #include "string"
 
 
-#define PYSOURCE_DEBUG 1
+#define PYSOURCE_DEBUG 0
 
 template < bool IS_QUERY >
 CSphTokenizer_Python<IS_QUERY>::CSphTokenizer_Python()
 	:CSphTokenizer_UTF8<IS_QUERY>::CSphTokenizer_UTF8 ()
 {
 	//mimic the mmseg token
+	CSphVector<CSphRemapRange> dRemaps;
+	/*
+
+	*/
+	dRemaps.Add ( CSphRemapRange ( 0x4e00, 0x9fff, 0x4e00 ) );
+	dRemaps.Add ( CSphRemapRange ( 0xFF00, 0xFFFF, 0xFF00 ) );
+	dRemaps.Add ( CSphRemapRange ( 0x3000, 0x303F, 0x3000 ) );
+
+	this->m_tLC.AddRemaps ( dRemaps, FLAG_CODEPOINT_NGRAM | FLAG_CODEPOINT_SPECIAL ); // !COMMIT support other n-gram lengths than 1
+	//ENDCJK
+	this->m_pAccumSeg = m_sAccumSeg;
+	this->m_iLastTokenBufferLen = 0;
+	//m_iLastTokenLenMMSeg = 0;
 }
 
 template < bool IS_QUERY >
@@ -5484,19 +5497,7 @@ void CSphTokenizer_Python<IS_QUERY>::init(const char  *python_path)
 	}else{
 		printf("got the pytoken obj error\n");
 	}
-	CSphVector<CSphRemapRange> dRemaps;
-	/*
-		
-	*/
-	dRemaps.Add ( CSphRemapRange ( 0x4e00, 0x9fff, 0x4e00 ) );
-	dRemaps.Add ( CSphRemapRange ( 0xFF00, 0xFFFF, 0xFF00 ) );
-	dRemaps.Add ( CSphRemapRange ( 0x3000, 0x303F, 0x3000 ) );
-		
-	this->m_tLC.AddRemaps ( dRemaps, FLAG_CODEPOINT_NGRAM | FLAG_CODEPOINT_SPECIAL ); // !COMMIT support other n-gram lengths than 1
-	//ENDCJK
-	this->m_pAccumSeg = m_sAccumSeg;
-	this->m_iLastTokenBufferLen = 0;
-	//m_iLastTokenLenMMSeg = 0;	
+
 }
 
 template < bool IS_QUERY >
@@ -5577,9 +5578,9 @@ BYTE * CSphTokenizer_Python<IS_QUERY>::GetToken()
 		//printf ("out here!!!"); sphDie("i die here");
 		*m_pAccumSeg = 0;
 		this->m_iLastTokenBufferLen = m_pAccumSeg - m_sAccumSeg;
-		printf("%d, %d", &m_pAccumSeg, &m_sAccumSeg);
+		//printf("%d, %d", m_pAccumSeg, m_sAccumSeg);
 		m_pAccumSeg = m_sAccumSeg;
-		printf( "#%s ", m_sAccumSeg);
+		//printf( "#%s ", m_sAccumSeg);
 		//m_segToken = (char*)(m_pTokenEnd-m_iLastTokenBufferLen);
 		return m_sAccumSeg;
 	}
@@ -17555,7 +17556,7 @@ bool CSphIndex_VLN::MultiQuery ( const CSphQuery * pQuery, CSphQueryResult * pRe
 	const BYTE * sModifiedQuery = (BYTE *)pQuery->m_sQuery.cstr();
 
 	//hack in. here is not change
-	printf("###### %s\n",sModifiedQuery);
+	//printf("###### %s\n",sModifiedQuery);
 
 	if ( m_pFieldFilter && m_pFieldFilter->Apply ( sModifiedQuery, 0, dFiltered ) )
 		sModifiedQuery = dFiltered.Begin();
