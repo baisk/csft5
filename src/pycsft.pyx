@@ -7,7 +7,7 @@ import os, sys
 
 import traceback
 import cython
-from libcpp.set cimport set 
+from libcpp.set cimport set as cset
 
 #from libc.stdlib cimport memcpy
 
@@ -180,14 +180,14 @@ cdef public api void pyTokenProcess( cpy_ref.PyObject* pyobj, BYTE* words, int i
     pytokenwrap.Process(pywords)
 
 cdef public api void pyGotAllResult( cpy_ref.PyObject* pyobj, void * p_segment ):
-    cdef set[int]* s_segment
+    cdef cset[int]* s_segment
 
-    s_segment = < set[int]* >p_segment # convert to a segment
+    s_segment = < cset[int]* >p_segment # convert to a segment
     # s_segment[0] = {1,2,3,4,5} #test pas
     pytokenwrap = <object>pyobj
 
     pyterm = pytokenwrap.GetTokenNext()
-    seg_set = {}
+    seg_set = set()
     offset = 0
     while(pyterm):
         py_byte_string = pyterm.encode('UTF-8')

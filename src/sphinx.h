@@ -669,6 +669,7 @@ protected:
 
 	CSphLowercaser					m_tLC;						///< my lowercaser
 	int								m_iLastTokenLen;			///< last token length, in codepoints
+	int								m_iLastTokenBufferLen;		///< the buffer length -- coreseek;
 	bool							m_bTokenBoundary;			///< last token boundary flag (true after boundary codepoint followed by separator)
 	bool							m_bBoundary;				///< boundary flag (true immediately after boundary codepoint)
 	int								m_iBoundaryOffset;			///< boundary character offset (in bytes)

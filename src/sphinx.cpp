@@ -2055,10 +2055,250 @@ protected:
 	CSphString			m_sNgramCharsStr;
 };
 
-/////////////////////////////////// use python tokenizer
+////////////////////////////////////////////////////////////////////// use python tokenizer
 #if USE_PYTHON
+// #include "pytoken.h"
+// #include "pytoken.cpp"
+#ifndef PYTOKEN_H
+#define PYTOKEN_H
+
+#include "sphinx.h"
+#include "rs_result.h" //暂时没有编码解码的过程
+#include "py_layer.h"
+
+
+#include "set"
+//#include "rs_result.h" //result set 结果集
+//#include "rs_result.hpp"
+
+
+template < bool IS_QUERY >
+class CSphTokenizer_Python : public CSphTokenizer_UTF8 <IS_QUERY>
+{
+
+public:
+	CSphTokenizer_Python ();
+	~CSphTokenizer_Python ();
+	//void bind(PyObject *obj); //绑定python的分词器. 暂时无效
+	void init(const char* python_path);
+	virtual void				SetBuffer ( BYTE * sBuffer, int iLength );
+	virtual BYTE *				GetToken ();
+	virtual ISphTokenizer *		Clone ( ESphTokenizerClone eMode ) const;
+	virtual const BYTE *GetExtend(); //暂时提供一个和mmseg类似的, 作为查询扩展的接口
+
+	virtual const char *	GetBufferPtr () const {	return (const char *) this->m_pCur;}
+//	virtual const char *	GetTokenStart () const	{return m_segToken;	}
+	virtual int	 GetLastTokenLen () const { return m_iLastTokenLen; }
+	virtual bool				IsSegment(const BYTE * pCur);
+
+protected:
+	BYTE m_sAccumSeg [ 3*SPH_MAX_WORD_LEN+3 ];
+	BYTE *				m_pAccumSeg;							///< current accumulator position
+	int					m_iLastTokenLen;			///< last token length, in codepoints
+	int					m_iLastTokenBufferLen;		///< the buffer length -- coreseek;	use in mmseg patch.
+	size_t m_segoffset;
+protected:
+	char* m_segToken;
+public:
+	PyObject * _obj; //改为public, 否则在clone函数中无法复制_obj
+	std::set<int> SegmentOffset; //暂时是一个set存储偏移量, 之后改成rs_result结果集
+	//Rosetta::SimpleSwResult *rs;
+
+};
+
+#endif // PYTOKEN_H
+
+
 #include "pytoken.h"
-#include "pytoken.cpp"
+#include "pycsft.h"
+#include "string"
+
+
+#define PYSOURCE_DEBUG 1
+
+template < bool IS_QUERY >
+CSphTokenizer_Python<IS_QUERY>::CSphTokenizer_Python()
+	:CSphTokenizer_UTF8<IS_QUERY>::CSphTokenizer_UTF8 ()
+{
+	//mimic the mmseg token
+	//this->m_pAccumSeg = m_sAccumSeg; //?
+
+	m_iLastTokenBufferLen = 0;
+	//m_iLastTokenLenMMSeg = 0;
+}
+
+template < bool IS_QUERY >
+CSphTokenizer_Python<IS_QUERY>::~CSphTokenizer_Python()
+{
+	if (PYSOURCE_DEBUG)
+		printf("#in ~CSphTokenizer_Python\n");
+	if (this->_obj)
+	{
+		DecreasePythonObject(this->_obj); //让python端维护ref_count
+	}
+}
+
+template < bool IS_QUERY >
+void CSphTokenizer_Python<IS_QUERY>::init(const char  *python_path)
+{
+	if (PYSOURCE_DEBUG)
+		printf("#in init\n#python_path: %s\n", python_path);
+
+	PyObject* obj = createPythonTokenizerObject(python_path);
+	if ( obj )
+	{
+		if (PYSOURCE_DEBUG)
+			printf("#got thef token obj successfully\n");
+		this->_obj= obj;
+		//Py_INCREF(this->_obj); 更改引用应该在cython端进行
+	}else{
+		printf("got the pytoken obj error\n");
+	}
+	CSphVector<CSphRemapRange> dRemaps;
+	/*
+		
+	*/
+	dRemaps.Add ( CSphRemapRange ( 0x4e00, 0x9fff, 0x4e00 ) );
+	dRemaps.Add ( CSphRemapRange ( 0xFF00, 0xFFFF, 0xFF00 ) );
+	dRemaps.Add ( CSphRemapRange ( 0x3000, 0x303F, 0x3000 ) );
+		
+	this->m_tLC.AddRemaps ( dRemaps, \
+		FLAG_CODEPOINT_NGRAM | FLAG_CODEPOINT_SPECIAL ); // !COMMIT support other n-gram lengths than 1
+	//ENDCJK
+	this->m_pAccumSeg = m_sAccumSeg;
+	m_iLastTokenBufferLen = 0;
+	//m_iLastTokenLenMMSeg = 0;	
+}
+
+template < bool IS_QUERY >
+void CSphTokenizer_Python<IS_QUERY>::SetBuffer(BYTE * sBuffer, int iLength)
+{
+	if (PYSOURCE_DEBUG)
+		printf ("#in setbuffer\n");
+	//mimic mmseg. 为了查询解析, 需要更新父类的成员变量
+	CSphTokenizer_UTF8<IS_QUERY>::SetBuffer(sBuffer, iLength);
+
+	pyTokenProcess(this->_obj, sBuffer, iLength); //给python端设定好词汇,然后直接得到结果. 同步接口.
+
+	pyGotAllResult(this->_obj, &SegmentOffset); //获取结果,目前填充所有的issegment值即可. 暂时不考虑同义词接口
+
+	if (PYSOURCE_DEBUG){
+		std::set<int>::iterator si;
+		for (si = SegmentOffset.begin(); si != SegmentOffset.end(); si++){
+			printf("%d, ", *si);
+		}
+	}
+//	m_segoffset = 0;
+//	m_segToken = (char*)m_pCur;
+
+}
+
+template < bool IS_QUERY >
+bool CSphTokenizer_Python<IS_QUERY>::IsSegment(const BYTE * pCur)
+{
+	int offset = pCur - this->m_pBuffer;
+	if (SegmentOffset.find(offset) != SegmentOffset.end() )
+	{
+		printf ("True\n");
+		return true;
+	}
+
+	printf("False");
+	return false;
+}
+
+template < bool IS_QUERY >
+BYTE * CSphTokenizer_Python<IS_QUERY>::GetToken()
+{
+//	m_iLastTokenLen = 0;
+
+//	int iLength = SPH_MAX_WORD_LEN;
+//	int* p_ilength = &iLength;
+//	int ret = pyTokenGetToken(this->_obj, m_sAccumSeg, p_ilength);
+//	if (ret)
+//		return NULL;
+//	{
+//		m_sAccumSeg[iLength] = '\0'; // c风格的字符串.
+//		printf( "%s/x ", m_sAccumSeg);
+//		m_iLastTokenBufferLen = iLength;
+//		return m_sAccumSeg;
+//	}
+
+	if (PYSOURCE_DEBUG)
+		printf ("##in GetToken\n");
+//	m_iLastTokenLenMMSeg = 0;
+	while(!IsSegment(this->m_pCur) || m_pAccumSeg == m_sAccumSeg)
+	{
+		BYTE* tok = CSphTokenizer_UTF8<IS_QUERY>::GetToken();
+		if(!tok){
+			return NULL;
+		}
+		printf("####tok: %s", tok);
+		if(m_pAccumSeg == m_sAccumSeg)
+			m_segToken = (char*)this->m_pTokenStart;
+
+		if ( (m_pAccumSeg - m_sAccumSeg)<SPH_MAX_WORD_LEN )  {
+			::memcpy(m_pAccumSeg, tok, m_iLastTokenBufferLen);
+			m_pAccumSeg += this->m_iLastTokenBufferLen;
+			//this->m_iLastTokenLenMMSeg += m_iLastTokenLen;
+		}
+	}
+	{
+		*m_pAccumSeg = 0;
+		this->m_iLastTokenBufferLen = m_pAccumSeg - m_sAccumSeg;
+		m_pAccumSeg = m_sAccumSeg;
+		printf( "###%s/x  ", m_sAccumSeg);
+		//m_segToken = (char*)(m_pTokenEnd-m_iLastTokenBufferLen);
+		return m_sAccumSeg;
+	}
+}
+
+template < bool IS_QUERY >
+const BYTE * CSphTokenizer_Python<IS_QUERY>::GetExtend()
+{
+//	int iLength = SPH_MAX_WORD_LEN;
+//	int i_cnt_max_extend = 3; //get at most extend 3
+
+//	int ret = pyTokenGetExtend(this->_obj, m_sAccumSeg, &iLength, &i_cnt_max_extend);
+//	if (ret)
+//		return NULL;
+//	m_sAccumSeg[iLength] = '\0'; // c风格的字符串.
+//	//printf( "%s/x ", m_sAccumSeg);
+//	return m_sAccumSeg;
+	return NULL;
+}
+
+template < bool IS_QUERY >
+ISphTokenizer *	CSphTokenizer_Python<IS_QUERY>::Clone( ESphTokenizerClone eMode ) const
+{
+	//ugly code. #fixme. need clear code
+	if (PYSOURCE_DEBUG)
+		printf ("#in Clone\n");
+	CSphTokenizerBase * pClone;
+	if ( eMode!=SPH_CLONE_INDEX )
+	{
+		CSphTokenizer_Python<true>* pClone_py = new CSphTokenizer_Python<true>();
+		pClone_py->_obj = this->_obj; //引用计数?
+		IncreasePythonObject(pClone_py->_obj); //和init时一样, copy保证引用计数要+1
+		pClone = (CSphTokenizerBase*)pClone_py;
+	}
+	else
+	{
+		CSphTokenizer_Python<false>* pClone_py = new CSphTokenizer_Python<false>();
+		pClone_py->_obj = this->_obj; //引用计数?
+		IncreasePythonObject(pClone_py->_obj); //和init时一样, copy保证引用计数要+1
+		pClone = (CSphTokenizerBase*)pClone_py;
+	}
+
+	pClone->CloneBase ( this, eMode );
+	return pClone;
+}
+
+
+
+
+
+////////////////////////////////////////////////////////////////////// code pytoken
 #endif
 
 
@@ -4349,6 +4589,7 @@ BYTE * CSphTokenizerBase2<IS_UTF8>::GetTokenSyn ( bool bQueryMode )
 				*m_pAccum = '\0';
 
 				m_iLastTokenLen = 1;
+				m_iLastTokenBufferLen = m_pAccum-m_sAccum; //coreseek
 				m_pTokenStart = pCur;
 				m_pTokenEnd = m_pCur;
 				return m_sAccum;
@@ -4415,6 +4656,7 @@ BYTE * CSphTokenizerBase2<IS_UTF8>::GetTokenSyn ( bool bQueryMode )
 				if ( bJustSpecial || ( iFolded & FLAG_CODEPOINT_SPECIAL )!=0 ) m_pCur = pCur; \
 				strncpy ( (char*)m_sAccum, m_dSynonyms[_idx].m_sTo.cstr(), sizeof(m_sAccum) ); \
 				m_iLastTokenLen = m_dSynonyms[_idx].m_iToLen; \
+				m_iLastTokenBufferLen = m_dSynonyms[_idx].m_sTo.Length(); /* coreseek */ \
 				m_bWasSynonym = true; \
 				return m_sAccum; \
 			}
@@ -4631,6 +4873,7 @@ BYTE * CSphTokenizerBase2<IS_UTF8>::GetTokenSyn ( bool bQueryMode )
 				if ( ShortTokenFilter ( m_sAccum, m_iAccum ) )
 				{
 					m_iLastTokenLen = m_iAccum;
+					m_iLastTokenBufferLen = m_pAccum-m_sAccum; //coreseek
 					m_pTokenEnd = pCur;
 					m_iAccum = 0;
 					return m_sAccum;
@@ -4646,6 +4889,7 @@ BYTE * CSphTokenizerBase2<IS_UTF8>::GetTokenSyn ( bool bQueryMode )
 
 		*m_pAccum = '\0';
 		m_iLastTokenLen = m_iAccum;
+		m_iLastTokenBufferLen = m_pAccum-m_sAccum; //coreseek
 		m_pTokenEnd = pCur;
 		return m_sAccum;
 	}
@@ -5308,6 +5552,7 @@ BYTE * CSphTokenizer_UTF8_Base::DoGetToken ()
 void CSphTokenizer_UTF8_Base::FlushAccum ()
 {
 	assert ( m_pAccum-m_sAccum < (int)sizeof(m_sAccum) );
+	m_iLastTokenBufferLen = m_pAccum-m_sAccum; //coreseek
 	m_iLastTokenLen = m_iAccum;
 	*m_pAccum = 0;
 	m_iAccum = 0;

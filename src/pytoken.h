@@ -25,8 +25,8 @@ public:
 	virtual ISphTokenizer *		Clone ( ESphTokenizerClone eMode ) const;
 	virtual const BYTE *GetExtend(); //暂时提供一个和mmseg类似的, 作为查询扩展的接口
 
-	//virtual const char *	GetBufferPtr () const {	return (const char *) m_pCur;}
-	//virtual const char *	GetTokenStart () const	{return m_segToken;	}
+	virtual const char *	GetBufferPtr () const {	return (const char *) this->m_pCur;}
+//	virtual const char *	GetTokenStart () const	{return m_segToken;	}
 	virtual int	 GetLastTokenLen () const { return m_iLastTokenLen; }
 	virtual bool				IsSegment(const BYTE * pCur);
 
@@ -34,7 +34,10 @@ protected:
 	BYTE m_sAccumSeg [ 3*SPH_MAX_WORD_LEN+3 ];
 	BYTE *				m_pAccumSeg;							///< current accumulator position
 	int					m_iLastTokenLen;			///< last token length, in codepoints
-
+	int					m_iLastTokenBufferLen;		///< the buffer length -- coreseek;	use in mmseg patch.
+	size_t m_segoffset;
+protected:
+	char* m_segToken;
 public:
 	PyObject * _obj; //改为public, 否则在clone函数中无法复制_obj
 	std::set<int> SegmentOffset; //暂时是一个set存储偏移量, 之后改成rs_result结果集

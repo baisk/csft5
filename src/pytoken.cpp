@@ -3,16 +3,16 @@
 #include "string"
 
 
-#define PYSOURCE_DEBUG 0
+#define PYSOURCE_DEBUG 1
 
 template < bool IS_QUERY >
 CSphTokenizer_Python<IS_QUERY>::CSphTokenizer_Python()
 	:CSphTokenizer_UTF8<IS_QUERY>::CSphTokenizer_UTF8 ()
 {
 	//mimic the mmseg token
-	//this->m_pAccumSeg = m_sAccumSeg;
+	//this->m_pAccumSeg = m_sAccumSeg; //?
 
-	//m_iLastTokenBufferLen = 0;
+	m_iLastTokenBufferLen = 0;
 	//m_iLastTokenLenMMSeg = 0;
 }
 
@@ -63,8 +63,6 @@ void CSphTokenizer_Python<IS_QUERY>::SetBuffer(BYTE * sBuffer, int iLength)
 			printf("%d, ", *si);
 		}
 	}
-
-
 //	m_segoffset = 0;
 //	m_segToken = (char*)m_pCur;
 
@@ -73,9 +71,11 @@ void CSphTokenizer_Python<IS_QUERY>::SetBuffer(BYTE * sBuffer, int iLength)
 template < bool IS_QUERY >
 bool CSphTokenizer_Python<IS_QUERY>::IsSegment(const BYTE * pCur)
 {
-	int offset = pCur - m_pBuffer;
+	int offset = pCur - this->m_pBuffer;
 	if (SegmentOffset.find(offset) != SegmentOffset.end() )
+		printf ("True\n");
 		return true;
+	printf("False");
 	return false;
 }
 
@@ -95,30 +95,31 @@ BYTE * CSphTokenizer_Python<IS_QUERY>::GetToken()
 //		m_iLastTokenBufferLen = iLength;
 //		return m_sAccumSeg;
 //	}
-	m_iLastTokenLenMMSeg = 0;
-	//BYTE* tok = CSphTokenizer_UTF8::GetToken();
-	while(!IsSegment(m_pCur) || m_pAccumSeg == m_sAccumSeg)
+
+	if (PYSOURCE_DEBUG)
+		printf ("##in GetToken\n");
+//	m_iLastTokenLenMMSeg = 0;
+	while(!IsSegment(this->m_pCur) || m_pAccumSeg == m_sAccumSeg)
 	{
-		BYTE* tok = CSphTokenizer_UTF8::GetToken();
+		BYTE* tok = CSphTokenizer_UTF8<IS_QUERY>::GetToken();
 		if(!tok){
-			m_iLastTokenLenMMSeg = 0;
 			return NULL;
 		}
-
+		printf("####tok: %s", tok);
 		if(m_pAccumSeg == m_sAccumSeg)
-			m_segToken = (char*)m_pTokenStart;
+			m_segToken = (char*)this->m_pTokenStart;
 
 		if ( (m_pAccumSeg - m_sAccumSeg)<SPH_MAX_WORD_LEN )  {
 			::memcpy(m_pAccumSeg, tok, m_iLastTokenBufferLen);
-			m_pAccumSeg += m_iLastTokenBufferLen;
-			m_iLastTokenLenMMSeg += m_iLastTokenLen;
+			m_pAccumSeg += this->m_iLastTokenBufferLen;
+			//this->m_iLastTokenLenMMSeg += m_iLastTokenLen;
 		}
 	}
 	{
 		*m_pAccumSeg = 0;
-		m_iLastTokenBufferLen = m_pAccumSeg - m_sAccumSeg;
+		this->m_iLastTokenBufferLen = m_pAccumSeg - m_sAccumSeg;
 		m_pAccumSeg = m_sAccumSeg;
-
+		printf( "###%s/x  ", m_sAccumSeg);
 		//m_segToken = (char*)(m_pTokenEnd-m_iLastTokenBufferLen);
 		return m_sAccumSeg;
 	}
@@ -136,6 +137,7 @@ const BYTE * CSphTokenizer_Python<IS_QUERY>::GetExtend()
 //	m_sAccumSeg[iLength] = '\0'; // c风格的字符串.
 //	//printf( "%s/x ", m_sAccumSeg);
 //	return m_sAccumSeg;
+	return NULL;
 }
 
 template < bool IS_QUERY >
