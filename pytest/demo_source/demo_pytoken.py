@@ -20,7 +20,8 @@ class Test_token(object):
 	def GetToken(self):
 		#print "########in demo_pytoken: GetToken"
 		#return [w.encode('utf8') for w in self.token]  #shodecreatePythonTokenizerObjectuld be utf8 coding
-		return self._filter( [w for w in self.token] )
+		#return self._filter( [w for w in self.token] )
+		return self.token
 
 	def GetAdvToken(self):
 		#return [ ( w.encode('utf8'), None, None) for w in self.token]  #返回每个词的 分词, 同义词, 词性标注
